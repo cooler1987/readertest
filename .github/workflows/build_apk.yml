@@ -3,11 +3,9 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main, '1']
   pull_request:
-    branches:
-      - main
+    branches: [main, '1']
 
 permissions:
   contents: read
@@ -15,61 +13,27 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Ensure Android project exists
+      - name: Create Android project if missing
         run: |
           if [ ! -d android ]; then
             flutter create . --platforms android --org com.cooler1987 --project-name readertest
           fi
 
-      - name: Install Android SDK 34
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter build apk --release
 
-      - name: Configure Android SDK versions
-        run: |
-          if [ -f android/app/build.gradle ]; then
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
-            sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
-            grep -nE 'compileSdkVersion|minSdkVersion|targetSdkVersion' android/app/build.gradle
-          fi
-
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' android/app/build.gradle.kts
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
-            sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 34/' android/app/build.gradle.kts
-            grep -nE 'compileSdk|minSdk|targetSdk' android/app/build.gradle.kts
-          fi
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Analyze
-        run: flutter analyze
-
-      - name: Clean stale build
-        run: flutter clean
-
-      - name: Build release APK
-        run: flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: readertest-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk

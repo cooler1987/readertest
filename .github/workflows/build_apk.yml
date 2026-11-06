@@ -15,6 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -32,7 +33,7 @@ jobs:
             flutter create . --platforms android --org com.cooler1987 --project-name readertest
           fi
 
-      - name: Install Android SDK 34
+      - name: Install Android SDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
@@ -40,20 +41,18 @@ jobs:
             "platforms;android-34" \
             "build-tools;34.0.0"
 
-      - name: Configure Android SDK versions
+      - name: Set Android SDK versions
         run: |
           if [ -f android/app/build.gradle ]; then
             sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
             sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
             sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
-            grep -nE 'compileSdkVersion|minSdkVersion|targetSdkVersion' android/app/build.gradle
           fi
 
           if [ -f android/app/build.gradle.kts ]; then
             sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' android/app/build.gradle.kts
             sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
             sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 34/' android/app/build.gradle.kts
-            grep -nE 'compileSdk|minSdk|targetSdk' android/app/build.gradle.kts
           fi
 
       - name: Get dependencies
@@ -61,9 +60,6 @@ jobs:
 
       - name: Analyze
         run: flutter analyze
-
-      - name: Clean stale build
-        run: flutter clean
 
       - name: Build release APK
         run: flutter build apk --release
